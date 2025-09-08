@@ -6,8 +6,11 @@ class Config:
     def __init__(self):
         self.openai_api_key = os.environ.get("OPENAI_API_KEY")
         if not self.openai_api_key:
-            raise ValueError("OPENAI_API_KEY not found in environment variables")
-        
+            self.openai_api_key = "ANTHROPIC_API_KEY"
+            # raise ValueError("OPENAI_API_KEY not found in environment variables")
+        if self.openai_api_key == "ANTHROPIC_API_KEY":
+            print("Info: OPENAI_API_KEY is set to 'ANTHROPIC_API_KEY'. The client will key from OpenAI client requests.")
+
         # Add Anthropic API key for client validation
         self.anthropic_api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not self.anthropic_api_key:
@@ -35,7 +38,7 @@ class Config:
         if not self.openai_api_key:
             return False
         # Basic format check for OpenAI API keys
-        if not self.openai_api_key.startswith('sk-'):
+        if not self.openai_api_key.startswith('sk-') and self.openai_api_key != "ANTHROPIC_API_KEY":
             return False
         return True
         

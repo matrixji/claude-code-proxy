@@ -17,12 +17,23 @@ from src.core.model_manager import model_manager
 
 router = APIRouter()
 
-openai_client = OpenAIClient(
-    config.openai_api_key,
-    config.openai_base_url,
-    config.request_timeout,
-    api_version=config.azure_api_version,
-)
+def create_openai_client(header: Header) -> OpenAIClient:
+    client_api_key = ""
+    if config.openai_api_key == "ANTHROPIC_API_KEY":
+        # Use the Anthropic API key for OpenAI client requests
+        client_api_key = header.get("x-api-key", "")
+        if client_api_key == "":
+            client_api_key = header.get("authorization", "").replace("Bearer ", "")
+    else:
+        # Use the configured OpenAI API key
+        client_api_key = config.openai_api_key
+    return OpenAIClient(
+        client_api_key,
+        config.openai_base_url,
+        config.request_timeout,
+        api_version=config.azure_api_version,
+    )
+
 
 async def validate_api_key(x_api_key: Optional[str] = Header(None), authorization: Optional[str] = Header(None)):
     """Validate the client's API key from either x-api-key header or Authorization header."""
@@ -63,6 +74,7 @@ async def create_message(request: ClaudeMessagesRequest, http_request: Request, 
         if await http_request.is_disconnected():
             raise HTTPException(status_code=499, detail="Client disconnected")
 
+        openai_client = create_openai_client(http_request.headers)
         if request.stream:
             # Streaming response - wrap in error handling
             try:
@@ -169,8 +181,9 @@ async def health_check():
 
 
 @router.get("/test-connection")
-async def test_connection():
+async def test_connection(request: Request):
     """Test API connectivity to OpenAI"""
+    openai_client = create_openai_client(request.headers)
     try:
         # Simple test request to verify API connectivity
         test_response = await openai_client.create_chat_completion(
